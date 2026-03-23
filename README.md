@@ -3,7 +3,7 @@
 Este repositório contém os trabalhos práticos da disciplina de Construção de Compiladores (DC/UFSCar). O projeto consiste na implementação de um compilador para a linguagem LA (Linguagem Algorítmica), desenvolvida pelo Prof. Jander.
 
 ## Desenvolvedores
-* Gabriel Somensi Duarte - ??????
+* Gabriel Somensi Duarte - 824391
 * Griselda Karen Sillerico Justo - 820744
 * Laura Pessine Teixeira - 824388
 
