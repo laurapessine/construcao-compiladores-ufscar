@@ -62,3 +62,13 @@ build/
 
 ### Mac OS ###
 .DS_Store
+
+# Arquivos e pastas do corretor automático e testes
+casos-de-teste/
+temp/
+entrada.txt
+saida.txt
+teste-final.txt
+
+# Arquivos da IDE IntelliJ
+.idea/
