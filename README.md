@@ -1,21 +1,33 @@
-# Analisador léxico - Linguagem Algorítmica (LA)
+# Compilador - Linguagem Algorítmica (LA)
 
-Este repositório contém os trabalhos práticos da disciplina de Construção de Compiladores (DC/UFSCar). O projeto consiste na implementação de um compilador para a linguagem LA (Linguagem Algorítmica), desenvolvida pelo Prof. Jander.
+Este repositório contém os trabalhos práticos da disciplina de Construção de Compiladores (DC/UFSCar). O projeto consiste na implementação de um compilador completo para a linguagem LA (Linguagem Algorítmica), desenvolvida pelo Prof. Jander, abrangendo desde a análise léxica até a geração de código.
 
-## Desenvolvedores
-* Gabriel Somensi Duarte - 824391
-* Griselda Karen Sillerico Justo - 820744
+## Desenvolvedora
 * Laura Pessine Teixeira - 824388
 
-## Requisitos e dependências
-Para compilar e executar este projeto, você precisará ter instalado em sua máquina as seguintes ferramentas:
-* **Java** (JDK 17 ou superior)
+## Requisitos
+Para compilar e executar este projeto, você precisará ter em sua máquina:
+* **Java 21** (ou superior)
 * **Maven** (gerenciador de dependências e build)
-* **ANTLR 4** (utilizado para o reconhecimento de padrões)
+
+*(O reconhecimento de padrões é feito utilizando o **ANTLR 4**, que já é baixado e gerenciado automaticamente pelo plugin do Maven durante o build).*
 
 ## Como compilar
-Para compilar o código-fonte e gerar o executável (arquivo `.jar`), abra o terminal na pasta raiz do projeto e execute o comando abaixo:
+Para compilar o código-fonte e gerar o executável (arquivo `.jar` encapsulado com as dependências), abra o terminal na raiz do projeto e execute:
 
 ```bash
-mvn clean install
+mvn clean package
+```
+*Dica: Utilizamos `package` no lugar de `install` para que o Maven apenas gere o `.jar` na pasta `/target` do projeto, sem precisar instalá-lo no seu repositório Maven local.*
+
+## Como executar (T1 - Analisador Léxico)
+Após a compilação, o executável estará disponível na pasta `target`. Para executar a análise léxica em um arquivo de código LA, utilize o comando abaixo, passando o arquivo de entrada e o arquivo de destino para a saída:
+
+```bash
+java -jar target/trabalho-compiladores-1.0-SNAPSHOT-jar-with-dependencies.jar <caminho_arquivo_entrada> <caminho_arquivo_saida>
+```
+
+**Exemplo de uso:**
+```bash
+java -jar target/trabalho-compiladores-1.0-SNAPSHOT-jar-with-dependencies.jar entrada.txt saida.txt
 ```
