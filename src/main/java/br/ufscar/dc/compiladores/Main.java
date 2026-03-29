@@ -20,7 +20,7 @@ public class Main {
 
             // Bloco try-with-resources para garantir a correta escrita e fechamento do arquivo de saída (args[1])
             try (PrintWriter pw = new PrintWriter(new FileWriter(args[1]))) {
-                Token t = null;
+                Token t;
 
                 // Laço para solicitar tokens ao analisador até o final do arquivo (EOF)
                 while ((t = lexer.nextToken()).getType() != Token.EOF) {
@@ -36,7 +36,7 @@ public class Main {
                         pw.println("Linha " + t.getLine() + ": cadeia literal nao fechada");
                         break;
                     } else {
-                        // Caminho feliz: formata e imprime os tokens lexicais válidos
+                        // Formata e imprime os tokens lexicais válidos
                         String nomeToken = LALexer.VOCABULARY.getDisplayName(t.getType());
                         pw.println("<'" + t.getText() + "'," + nomeToken + ">");
                     }
