@@ -34,6 +34,9 @@
                         </goals>
                     </execution>
                 </executions>
+                <configuration>
+                    <libDirectory>src/main/antlr4/br/ufscar/dc/compiladores</libDirectory>
+                </configuration>
             </plugin>
             <plugin>
                 <artifactId>maven-assembly-plugin</artifactId>
