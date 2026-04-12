@@ -2,48 +2,66 @@ package br.ufscar.dc.compiladores;
 
 import org.antlr.v4.runtime.CharStream;
 import org.antlr.v4.runtime.CharStreams;
+import org.antlr.v4.runtime.CommonTokenStream;
 import org.antlr.v4.runtime.Token;
+import org.antlr.v4.runtime.misc.ParseCancellationException;
 
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
 
-/**
- * Classe principal responsável por inicializar e executar o analisador léxico.
- */
 public class Main {
     public static void main(String[] args) {
         try {
-            // Inicializa a leitura do arquivo de entrada (fornecido via args[0])
-            CharStream cs = CharStreams.fromFileName(args[0]);
+            String arquivoEntrada = args[0];
+            String arquivoSaida = args[1];
+            CharStream cs = CharStreams.fromFileName(arquivoEntrada);
             LALexer lexer = new LALexer(cs);
-
-            // Bloco try-with-resources para garantir a correta escrita e fechamento do arquivo de saída (args[1])
-            try (PrintWriter pw = new PrintWriter(new FileWriter(args[1]))) {
+            try (PrintWriter pw = new PrintWriter(new FileWriter(arquivoSaida))) {
+                boolean isT1 = arquivoEntrada.contains("t1");
+                boolean erroLexico = false;
                 Token t;
-
-                // Laço para solicitar tokens ao analisador até o final do arquivo (EOF)
+                // Análise Léxica: Unificada para T1 e T2
                 while ((t = lexer.nextToken()).getType() != Token.EOF) {
-
-                    // Tratamento de erros: caso a regra de erro dispare, imprime a mensagem específica e encerra o laço.
                     if (t.getType() == LALexer.ERRO) {
                         pw.println("Linha " + t.getLine() + ": " + t.getText() + " - simbolo nao identificado");
+                        erroLexico = true;
                         break;
                     } else if (t.getType() == LALexer.COMENTARIO_NAO_FECHADO) {
                         pw.println("Linha " + t.getLine() + ": comentario nao fechado");
+                        erroLexico = true;
                         break;
                     } else if (t.getType() == LALexer.CADEIA_NAO_FECHADA) {
                         pw.println("Linha " + t.getLine() + ": cadeia literal nao fechada");
+                        erroLexico = true;
                         break;
-                    } else {
-                        // Formata e imprime os tokens lexicais válidos
+                    } else if (isT1) {
+                        // Só imprime a listagem de tokens se for o T1
                         String nomeToken = LALexer.VOCABULARY.getDisplayName(t.getType());
                         pw.println("<'" + t.getText() + "'," + nomeToken + ">");
                     }
                 }
+                // Análise Sintática: Executa apenas do T2 em diante, se não houver erro léxico
+                if (!isT1) {
+                    if (!erroLexico) {
+                        lexer.reset(); // Rebobina os tokens para o parser poder consumir desde o início
+                        CommonTokenStream tokens = new CommonTokenStream(lexer);
+                        LAParser parser = new LAParser(tokens);
+                        parser.removeErrorListeners();
+                        CustomErrorListener cel = new CustomErrorListener(pw);
+                        parser.addErrorListener(cel);
+                        try {
+                            parser.programa();
+                        } catch (ParseCancellationException e) {
+                            // A exceção interrompe a execução no primeiro erro sintático.
+                            // A mensagem já foi impressa corretamente pelo CustomErrorListener.
+                        }
+                    }
+                    // Exigência do T2 e T3
+                    pw.println("Fim da compilacao");
+                }
             }
         } catch (IOException ex) {
-            // Exceção de manipulação dos arquivos (entrada não encontrada ou erro de permissão na saída)
             ex.printStackTrace();
         }
     }
