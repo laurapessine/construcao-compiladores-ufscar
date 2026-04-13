@@ -69,6 +69,7 @@ temp/
 entrada.txt
 saida.txt
 teste-final.txt
+gen/
 
 # Arquivos da IDE IntelliJ
 .idea/
