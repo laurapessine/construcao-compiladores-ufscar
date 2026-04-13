@@ -36,6 +36,7 @@
                 </executions>
                 <configuration>
                     <libDirectory>src/main/antlr4/br/ufscar/dc/compiladores</libDirectory>
+                    <visitor>true</visitor>
                 </configuration>
             </plugin>
             <plugin>

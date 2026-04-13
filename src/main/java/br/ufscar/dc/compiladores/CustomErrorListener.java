@@ -1,6 +1,6 @@
 package br.ufscar.dc.compiladores;
 
-import org.antlr.v4.runtime.BaseErrorListener; // ouvinte de erro base
+import org.antlr.v4.runtime.BaseErrorListener;
 import org.antlr.v4.runtime.RecognitionException;
 import org.antlr.v4.runtime.Recognizer;
 import org.antlr.v4.runtime.Token;
