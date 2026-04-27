@@ -81,8 +81,7 @@ public class LASemantico extends LAParserBaseVisitor<Void> {
             TabelaDeSimbolos.TipoLA tipoExpressao = LASemanticoUtils.verificarTipo(escoposAninhados, ctx.expressao());
             // Se for um ponteiro (ex: ^x <- 5), inclui o ^ na mensagem de erro
             String nomeVariavelCompleto = ctx.PONTEIRO() != null ? "^" + nomeVar : nomeVar;
-            // Se os tipos não batem, solta o erro 4
-            if (tipoVariavel != TabelaDeSimbolos.TipoLA.INVALIDO && tipoExpressao != TabelaDeSimbolos.TipoLA.INVALIDO) {
+            if (tipoVariavel != TabelaDeSimbolos.TipoLA.INVALIDO) {
                 if (!LASemanticoUtils.verificarCompatibilidade(tipoVariavel, tipoExpressao)) {
                     LASemanticoUtils.adicionarErroSemantico(ctx.identificador().start, "atribuicao nao compativel para " + nomeVariavelCompleto);
                 }

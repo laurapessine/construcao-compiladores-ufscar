@@ -39,3 +39,6 @@ Para arquivos de entrada comuns ou rodando nos testes do T2 em diante, o compila
 ```bash
 java -jar target/trabalho-compiladores-1.0-SNAPSHOT-jar-with-dependencies.jar entrada.txt saida.txt
 ```
+
+### T3 - Analisador Semântico
+Para arquivos a partir do T3 (que não contenham "t1" ou "t2" no nome da pasta), o compilador também executa a verificação semântica utilizando o padrão Visitor, checando declarações duplicadas, variáveis não declaradas e compatibilidade de tipos, imprimindo todos os erros encontrados no arquivo de saída.
