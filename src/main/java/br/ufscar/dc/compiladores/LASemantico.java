@@ -69,12 +69,24 @@ public class LASemantico extends LAParserBaseVisitor<Void> {
         return super.visitCmdLeia(ctx);
     }
 
-    // ERRO 3: Identificador não declarado (exemplo na atribuição)
+    // ERRO 3 (não declarado) e ERRO 4 (incompatibilidade de tipos) na atribuição
     @Override
     public Void visitCmdAtribuicao(LAParser.CmdAtribuicaoContext ctx) {
         String nomeVar = ctx.identificador().getText();
         if (!LASemanticoUtils.verificarSimbolo(escoposAninhados, nomeVar)) {
             LASemanticoUtils.adicionarErroSemantico(ctx.identificador().start, "identificador " + nomeVar + " nao declarado");
+        } else {
+            // Descobre o tipo da variável e o tipo do lado direito da conta
+            TabelaDeSimbolos.TipoLA tipoVariavel = LASemanticoUtils.verificarTipo(escoposAninhados, nomeVar);
+            TabelaDeSimbolos.TipoLA tipoExpressao = LASemanticoUtils.verificarTipo(escoposAninhados, ctx.expressao());
+            // Se for um ponteiro (ex: ^x <- 5), inclui o ^ na mensagem de erro
+            String nomeVariavelCompleto = ctx.PONTEIRO() != null ? "^" + nomeVar : nomeVar;
+            // Se os tipos não batem, solta o erro 4
+            if (tipoVariavel != TabelaDeSimbolos.TipoLA.INVALIDO && tipoExpressao != TabelaDeSimbolos.TipoLA.INVALIDO) {
+                if (!LASemanticoUtils.verificarCompatibilidade(tipoVariavel, tipoExpressao)) {
+                    LASemanticoUtils.adicionarErroSemantico(ctx.identificador().start, "atribuicao nao compativel para " + nomeVariavelCompleto);
+                }
+            }
         }
         return super.visitCmdAtribuicao(ctx);
     }
