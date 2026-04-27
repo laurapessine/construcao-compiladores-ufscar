@@ -15,11 +15,10 @@ public class TabelaDeSimbolos {
     }
 
     // A classe interna que guarda os dados de cada identificador
-    static class EntradaTabelaDeSimbolos {
+    public static class EntradaTabelaDeSimbolos {
         String nome;
         TipoLA tipo;
         EstruturaLA estrutura;
-
         // Se a variável for de um tipo estendido (como um registro), guarda o nome dele
         String nomeTipoEstendido;
 
@@ -45,7 +44,7 @@ public class TabelaDeSimbolos {
         this.tabela = new HashMap<>();
     }
 
-    // Método para adicionar um novo identificador na tabela
+    // Métodos para adicionar um novo identificador na tabela
     public void adicionar(String nome, TipoLA tipo, EstruturaLA estrutura) {
         tabela.put(nome, new EntradaTabelaDeSimbolos(nome, tipo, estrutura));
     }
@@ -59,8 +58,7 @@ public class TabelaDeSimbolos {
         return tabela.containsKey(nome);
     }
 
-    // Retorna o tipo de um identificador (útil para verificar compatibilidade de atribuição)
-    public TipoLA verificar(String nome) {
-        return tabela.get(nome).tipo;
+    public EntradaTabelaDeSimbolos verificar(String nome) {
+        return tabela.get(nome);
     }
 }
