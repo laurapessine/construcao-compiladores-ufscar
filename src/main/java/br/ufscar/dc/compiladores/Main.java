@@ -19,9 +19,10 @@ public class Main {
             LALexer lexer = new LALexer(cs);
             try (PrintWriter pw = new PrintWriter(new FileWriter(arquivoSaida))) {
                 boolean isT1 = arquivoEntrada.contains("t1");
+                boolean isT2 = arquivoEntrada.contains("t2");
                 boolean erroLexico = false;
                 Token t;
-                // Análise Léxica: Unificada para T1 e T2
+                // 1. ANÁLISE LÉXICA
                 while ((t = lexer.nextToken()).getType() != Token.EOF) {
                     if (t.getType() == LALexer.ERRO) {
                         pw.println("Linha " + t.getLine() + ": " + t.getText() + " - simbolo nao identificado");
@@ -36,12 +37,11 @@ public class Main {
                         erroLexico = true;
                         break;
                     } else if (isT1) {
-                        // Só imprime a listagem de tokens se for o T1
                         String nomeToken = LALexer.VOCABULARY.getDisplayName(t.getType());
                         pw.println("<'" + t.getText() + "'," + nomeToken + ">");
                     }
                 }
-                // Análise Sintática: Executa apenas do T2 em diante, se não houver erro léxico
+                // 2. ANÁLISE SINTÁTICA E SEMÂNTICA
                 if (!isT1) {
                     if (!erroLexico) {
                         lexer.reset(); // Rebobina os tokens para o parser poder consumir desde o início
@@ -51,13 +51,26 @@ public class Main {
                         CustomErrorListener cel = new CustomErrorListener(pw);
                         parser.addErrorListener(cel);
                         try {
-                            parser.programa();
+                            // O parser gera a árvore sintática (AST)
+                            LAParser.ProgramaContext arvore = parser.programa();
+                            // 3. ANÁLISE SEMÂNTICA (T3 em diante)
+                            if (!isT2) {
+                                // Limpa os erros de execuções anteriores (importante para o corretor)
+                                LASemanticoUtils.errosSemanticos.clear();
+
+                                // Instancia e aciona o Visitor semântico
+                                LASemantico as = new LASemantico();
+                                as.visitPrograma(arvore);
+
+                                // Imprime todos os erros semânticos encontrados
+                                for (String erro : LASemanticoUtils.errosSemanticos) {
+                                    pw.println(erro);
+                                }
+                            }
                         } catch (ParseCancellationException e) {
-                            // A exceção interrompe a execução no primeiro erro sintático.
-                            // A mensagem já foi impressa corretamente pelo CustomErrorListener.
+                            // Erro sintático capturado. A mensagem já foi impressa.
                         }
                     }
-                    // Exigência do T2 e T3
                     pw.println("Fim da compilacao");
                 }
             }
