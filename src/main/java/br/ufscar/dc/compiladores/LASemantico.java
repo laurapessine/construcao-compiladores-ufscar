@@ -38,7 +38,6 @@ public class LASemantico extends LAParserBaseVisitor<Void> {
                     tipo = TabelaDeSimbolos.TipoLA.REGISTRO;
                 } else {
                     LASemanticoUtils.adicionarErroSemantico(tipoCtx.tipo_estendido().tipo_basico_ident().IDENT().getSymbol(), "tipo " + nomeTipoEstendido + " nao declarado");
-                    return;
                 }
             }
         } else if (tipoCtx.registro() != null) {
@@ -63,6 +62,8 @@ public class LASemantico extends LAParserBaseVisitor<Void> {
         for (LAParser.VariavelContext varCtx : ctx.variavel()) {
             for (LAParser.IdentificadorContext identCtx : varCtx.identificador()) {
                 String nomeCampo = identCtx.getText();
+                // Corta o [ da declaração
+                if (nomeCampo.contains("[")) nomeCampo = nomeCampo.split("\\[")[0];
                 TabelaDeSimbolos.TipoLA tipoCampo = TabelaDeSimbolos.TipoLA.INVALIDO;
                 String nomeTipoEstendido = null;
                 if (varCtx.tipo().tipo_estendido() != null && varCtx.tipo().tipo_estendido().tipo_basico_ident() != null) {
@@ -105,7 +106,8 @@ public class LASemantico extends LAParserBaseVisitor<Void> {
         if (ctx.DECLARE() != null) {
             for (LAParser.IdentificadorContext idCtx : ctx.variavel().identificador()) {
                 String nomeVar = idCtx.getText();
-                // O método auxiliar já trata a inserção de variáveis, registros e ponteiros
+                // Corta o [ da declaração
+                if (nomeVar.contains("[")) nomeVar = nomeVar.split("\\[")[0];
                 inserirNaTabela(nomeVar, ctx.variavel().tipo(), idCtx.start);
             }
         } else if (ctx.CONSTANTE() != null) {
@@ -153,13 +155,29 @@ public class LASemantico extends LAParserBaseVisitor<Void> {
             for (LAParser.ParametroContext paramCtx : ctx.parametros().parametro()) {
                 for (LAParser.IdentificadorContext idCtx : paramCtx.identificador()) {
                     String nomeParam = idCtx.getText();
+                    // Limpa qualquer sujeira da gramática e colchetes
+                    nomeParam = nomeParam.replace("var", "").replace(":", "").trim();
+                    if (nomeParam.contains("[")) nomeParam = nomeParam.split("\\[")[0];
                     TabelaDeSimbolos.TipoLA tipoParam = determinarTipo(paramCtx.tipo_estendido().getText());
-                    entrada.tiposParametros.add(tipoParam); // Assinatura para checar na hora de chamar
-                    escopoFuncao.adicionar(nomeParam, tipoParam, TabelaDeSimbolos.EstruturaLA.VARIAVEL); // Variável local
+                    // Acerta o tipo para REGISTRO primeiro
+                    String nomeTipoEstendido = null;
+                    if (tipoParam == TabelaDeSimbolos.TipoLA.INVALIDO || tipoParam == TabelaDeSimbolos.TipoLA.REGISTRO) {
+                        nomeTipoEstendido = paramCtx.tipo_estendido().tipo_basico_ident().IDENT().getText();
+                        tipoParam = TabelaDeSimbolos.TipoLA.REGISTRO;
+                    }
+                    // Com o tipo correto, salva na assinatura da função
+                    entrada.tiposParametros.add(tipoParam);
+                    escopoFuncao.adicionar(nomeParam, tipoParam, TabelaDeSimbolos.EstruturaLA.VARIAVEL, nomeTipoEstendido);
+                    // Popula o parâmetro com os campos
+                    if (nomeTipoEstendido != null) {
+                        TabelaDeSimbolos.EntradaTabelaDeSimbolos entradaTipo = LASemanticoUtils.buscarSimbolo(escoposAninhados, nomeTipoEstendido);
+                        if (entradaTipo != null && entradaTipo.camposRegistro != null) {
+                            escopoFuncao.verificar(nomeParam).camposRegistro = entradaTipo.camposRegistro;
+                        }
+                    }
                 }
             }
         }
-        // Continua a visitar o corpo da função (comandos, etc)
         super.visitDeclaracao_global(ctx);
         // Fecha o escopo quando a função termina
         escoposAninhados.abandonarEscopo();

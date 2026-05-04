@@ -14,14 +14,9 @@ public class LASemanticoUtils {
         errosSemanticos.add("Linha " + linha + ": " + mensagem);
     }
 
-    // Verifica se o símbolo existe em qualquer um dos escopos abertos
-    public static boolean verificarSimbolo(Escopos escopos, String nome) {
-        for (TabelaDeSimbolos tabela : escopos.percorrerEscoposAninhados()) {
-            if (tabela.existe(nome)) {
-                return true;
-            }
-        }
-        return false;
+    // Usa a busca com pontos e colchetes
+    public static boolean verificarSimbolo(Escopos escopos, String nomeVar) {
+        return buscarSimbolo(escopos, nomeVar) != null;
     }
 
     // Garante que os identificadores com "." peguem o tipo certo do último pedaço
@@ -33,9 +28,12 @@ public class LASemanticoUtils {
         return TabelaDeSimbolos.TipoLA.INVALIDO;
     }
 
-    // Método principal de busca
+    // Busca o símbolo, mas ignora os colchetes de vetores
     public static TabelaDeSimbolos.EntradaTabelaDeSimbolos buscarSimbolo(Escopos escopos, String nomeVar) {
-        // Se a busca for simples (sem ponto)
+        // Ignora os colchetes para procurar a raiz da variável (ex: valor[0] vira valor)
+        if (nomeVar.contains("[")) {
+            nomeVar = nomeVar.split("\\[")[0];
+        }
         if (!nomeVar.contains(".")) {
             for (TabelaDeSimbolos tabela : escopos.percorrerEscoposAninhados()) {
                 if (tabela.existe(nomeVar)) {
@@ -80,8 +78,9 @@ public class LASemanticoUtils {
         if ((tipo1 == TabelaDeSimbolos.TipoLA.INTEIRO || tipo1 == TabelaDeSimbolos.TipoLA.REAL) && (tipo2 == TabelaDeSimbolos.TipoLA.INTEIRO || tipo2 == TabelaDeSimbolos.TipoLA.REAL)) {
             return true;
         }
-        // Ponteiro com Ponteiro ou Endereço com Ponteiro
-        return (tipo1 == TabelaDeSimbolos.TipoLA.ENDERECO && tipo2 == TabelaDeSimbolos.TipoLA.INTEIRO) || (tipo1 == TabelaDeSimbolos.TipoLA.ENDERECO && tipo2 == TabelaDeSimbolos.TipoLA.REAL) || (tipo1 == TabelaDeSimbolos.TipoLA.ENDERECO && tipo2 == TabelaDeSimbolos.TipoLA.LOGICO) || (tipo1 == TabelaDeSimbolos.TipoLA.ENDERECO && tipo2 == TabelaDeSimbolos.TipoLA.LITERAL);
+        // Ponteiros só aceitam endereços de memória, ou dados numéricos (se for dereferênciação)
+        if (tipo1 == TabelaDeSimbolos.TipoLA.ENDERECO && tipo2 == TabelaDeSimbolos.TipoLA.ENDERECO) return true;
+        return tipo1 == TabelaDeSimbolos.TipoLA.ENDERECO && (tipo2 == TabelaDeSimbolos.TipoLA.INTEIRO || tipo2 == TabelaDeSimbolos.TipoLA.REAL);
     }
 
     // ==============================================================
