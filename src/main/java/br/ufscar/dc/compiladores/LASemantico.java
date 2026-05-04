@@ -1,7 +1,93 @@
 package br.ufscar.dc.compiladores;
 
+import org.antlr.v4.runtime.Token;
+
 public class LASemantico extends LAParserBaseVisitor<Void> {
     Escopos escoposAninhados;
+
+    // Método auxiliar para inserir na tabela
+    private void inserirNaTabela(String nomeId, LAParser.TipoContext tipoCtx, Token nomeToken) {
+        TabelaDeSimbolos escopoAtual = escoposAninhados.obterEscopoAtual();
+        // Verifica se já não existe no mesmo escopo (Erro 1)
+        if (escopoAtual.existe(nomeId)) {
+            LASemanticoUtils.adicionarErroSemantico(nomeToken, "identificador " + nomeId + " ja declarado anteriormente");
+            return;
+        }
+        // É um ponteiro?
+        boolean ehPonteiro = tipoCtx.tipo_estendido() != null && tipoCtx.tipo_estendido().PONTEIRO() != null;
+        TabelaDeSimbolos.TipoLA tipo = TabelaDeSimbolos.TipoLA.INVALIDO;
+        String nomeTipoEstendido = null;
+        if (tipoCtx.tipo_estendido() != null && tipoCtx.tipo_estendido().tipo_basico_ident() != null) {
+            // Pode ser um tipo básico (inteiro, real...) ou um tipo definido pelo usuário (registro)
+            if (tipoCtx.tipo_estendido().tipo_basico_ident().tipo_basico() != null) {
+                // É um tipo básico
+                String strTipo = tipoCtx.tipo_estendido().tipo_basico_ident().tipo_basico().getText();
+                tipo = switch (strTipo) {
+                    case "inteiro" -> TabelaDeSimbolos.TipoLA.INTEIRO;
+                    case "real" -> TabelaDeSimbolos.TipoLA.REAL;
+                    case "literal" -> TabelaDeSimbolos.TipoLA.LITERAL;
+                    case "logico" -> TabelaDeSimbolos.TipoLA.LOGICO;
+                    default -> TabelaDeSimbolos.TipoLA.INVALIDO;
+                };
+            } else {
+                nomeTipoEstendido = tipoCtx.tipo_estendido().tipo_basico_ident().IDENT().getText();
+                TabelaDeSimbolos.EntradaTabelaDeSimbolos entrada = LASemanticoUtils.buscarSimbolo(escoposAninhados, nomeTipoEstendido);
+                if (entrada != null && entrada.estrutura == TabelaDeSimbolos.EstruturaLA.TIPO) {
+                    tipo = TabelaDeSimbolos.TipoLA.REGISTRO;
+                } else {
+                    LASemanticoUtils.adicionarErroSemantico(tipoCtx.tipo_estendido().tipo_basico_ident().IDENT().getSymbol(), "tipo " + nomeTipoEstendido + " nao declarado");
+                    return;
+                }
+            }
+        } else if (tipoCtx.registro() != null) {
+            tipo = TabelaDeSimbolos.TipoLA.REGISTRO;
+        }
+        if (ehPonteiro) {
+            tipo = TabelaDeSimbolos.TipoLA.ENDERECO;
+        }
+        escopoAtual.adicionar(nomeId, tipo, TabelaDeSimbolos.EstruturaLA.VARIAVEL, nomeTipoEstendido);
+        if (tipoCtx.registro() != null) {
+            popularRegistro(escopoAtual.verificar(nomeId).camposRegistro, tipoCtx.registro());
+        } else if (nomeTipoEstendido != null) {
+            TabelaDeSimbolos.EntradaTabelaDeSimbolos entradaTipo = LASemanticoUtils.buscarSimbolo(escoposAninhados, nomeTipoEstendido);
+            if (entradaTipo != null && entradaTipo.camposRegistro != null) {
+                escopoAtual.verificar(nomeId).camposRegistro = entradaTipo.camposRegistro;
+            }
+        }
+    }
+
+    // Método auxiliar para popular registros
+    private void popularRegistro(TabelaDeSimbolos tabelaRegistro, LAParser.RegistroContext ctx) {
+        for (LAParser.VariavelContext varCtx : ctx.variavel()) {
+            for (LAParser.IdentificadorContext identCtx : varCtx.identificador()) {
+                String nomeCampo = identCtx.getText();
+                TabelaDeSimbolos.TipoLA tipoCampo = TabelaDeSimbolos.TipoLA.INVALIDO;
+                String nomeTipoEstendido = null;
+                if (varCtx.tipo().tipo_estendido() != null && varCtx.tipo().tipo_estendido().tipo_basico_ident() != null) {
+                    if (varCtx.tipo().tipo_estendido().tipo_basico_ident().tipo_basico() != null) {
+                        String strTipo = varCtx.tipo().tipo_estendido().tipo_basico_ident().tipo_basico().getText();
+                        tipoCampo = switch (strTipo) {
+                            case "inteiro" -> TabelaDeSimbolos.TipoLA.INTEIRO;
+                            case "real" -> TabelaDeSimbolos.TipoLA.REAL;
+                            case "literal" -> TabelaDeSimbolos.TipoLA.LITERAL;
+                            case "logico" -> TabelaDeSimbolos.TipoLA.LOGICO;
+                            default -> TabelaDeSimbolos.TipoLA.INVALIDO;
+                        };
+                    } else {
+                        nomeTipoEstendido = varCtx.tipo().tipo_estendido().tipo_basico_ident().IDENT().getText();
+                        tipoCampo = TabelaDeSimbolos.TipoLA.REGISTRO;
+                    }
+                }
+                tabelaRegistro.adicionar(nomeCampo, tipoCampo, TabelaDeSimbolos.EstruturaLA.VARIAVEL, nomeTipoEstendido);
+                if (nomeTipoEstendido != null) {
+                    TabelaDeSimbolos.EntradaTabelaDeSimbolos entradaTipo = LASemanticoUtils.buscarSimbolo(escoposAninhados, nomeTipoEstendido);
+                    if (entradaTipo != null && entradaTipo.camposRegistro != null) {
+                        tabelaRegistro.verificar(nomeCampo).camposRegistro = entradaTipo.camposRegistro;
+                    }
+                }
+            }
+        }
+    }
 
     @Override
     public Void visitPrograma(LAParser.ProgramaContext ctx) {

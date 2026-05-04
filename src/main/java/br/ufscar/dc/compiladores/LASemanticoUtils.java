@@ -33,11 +33,40 @@ public class LASemanticoUtils {
         return TabelaDeSimbolos.TipoLA.INVALIDO;
     }
 
-    // Regra de compatibilidade de atribuição (REAL e INTEIRO)
+    // Busca um símbolo lidando com registros (ex: "aluno.idade")
+    public static TabelaDeSimbolos.EntradaTabelaDeSimbolos buscarSimbolo(Escopos escopos, String nomeVar) {
+        if (nomeVar.contains(".")) {
+            String[] partes = nomeVar.split("\\."); // Separa "aluno" de "idade"
+            for (TabelaDeSimbolos tabela : escopos.percorrerEscoposAninhados()) {
+                if (tabela.existe(partes[0])) {
+                    TabelaDeSimbolos.EntradaTabelaDeSimbolos registro = tabela.verificar(partes[0]);
+                    // Se a primeira parte existir, procura a segunda parte DENTRO do registro
+                    if (registro.camposRegistro != null && registro.camposRegistro.existe(partes[1])) {
+                        return registro.camposRegistro.verificar(partes[1]);
+                    }
+                }
+            }
+        } else {
+            // Busca normal (variável comum)
+            for (TabelaDeSimbolos tabela : escopos.percorrerEscoposAninhados()) {
+                if (tabela.existe(nomeVar)) {
+                    return tabela.verificar(nomeVar);
+                }
+            }
+        }
+        return null;
+    }
+
+    // Regra de compatibilidade de atribuição
     public static boolean verificarCompatibilidade(TabelaDeSimbolos.TipoLA tipo1, TabelaDeSimbolos.TipoLA tipo2) {
         if (tipo1 == tipo2) return true;
         if (tipo1 == TabelaDeSimbolos.TipoLA.INVALIDO || tipo2 == TabelaDeSimbolos.TipoLA.INVALIDO) return false;
-        return (tipo1 == TabelaDeSimbolos.TipoLA.INTEIRO || tipo1 == TabelaDeSimbolos.TipoLA.REAL) && (tipo2 == TabelaDeSimbolos.TipoLA.INTEIRO || tipo2 == TabelaDeSimbolos.TipoLA.REAL);
+        // Inteiro e Real
+        if ((tipo1 == TabelaDeSimbolos.TipoLA.INTEIRO || tipo1 == TabelaDeSimbolos.TipoLA.REAL) && (tipo2 == TabelaDeSimbolos.TipoLA.INTEIRO || tipo2 == TabelaDeSimbolos.TipoLA.REAL)) {
+            return true;
+        }
+        // Ponteiro com Ponteiro ou Endereço com Ponteiro
+        return (tipo1 == TabelaDeSimbolos.TipoLA.ENDERECO && tipo2 == TabelaDeSimbolos.TipoLA.INTEIRO) || (tipo1 == TabelaDeSimbolos.TipoLA.ENDERECO && tipo2 == TabelaDeSimbolos.TipoLA.REAL) || (tipo1 == TabelaDeSimbolos.TipoLA.ENDERECO && tipo2 == TabelaDeSimbolos.TipoLA.LOGICO) || (tipo1 == TabelaDeSimbolos.TipoLA.ENDERECO && tipo2 == TabelaDeSimbolos.TipoLA.LITERAL);
     }
 
     // ==============================================================
@@ -97,8 +126,7 @@ public class LASemanticoUtils {
                 ret = aux;
             } else if (ret != aux && aux != TabelaDeSimbolos.TipoLA.INVALIDO) {
                 // Se misturou Literal com qualquer número (Inteiro ou Real), a conta quebra
-                if ((ret == TabelaDeSimbolos.TipoLA.LITERAL && (aux == TabelaDeSimbolos.TipoLA.INTEIRO || aux == TabelaDeSimbolos.TipoLA.REAL)) ||
-                        (aux == TabelaDeSimbolos.TipoLA.LITERAL && (ret == TabelaDeSimbolos.TipoLA.INTEIRO || ret == TabelaDeSimbolos.TipoLA.REAL))) {
+                if ((ret == TabelaDeSimbolos.TipoLA.LITERAL && (aux == TabelaDeSimbolos.TipoLA.INTEIRO || aux == TabelaDeSimbolos.TipoLA.REAL)) || (aux == TabelaDeSimbolos.TipoLA.LITERAL && (ret == TabelaDeSimbolos.TipoLA.INTEIRO || ret == TabelaDeSimbolos.TipoLA.REAL))) {
                     ret = TabelaDeSimbolos.TipoLA.INVALIDO;
                 } else if (verificarCompatibilidade(ret, aux)) {
                     if (ret == TabelaDeSimbolos.TipoLA.INTEIRO && aux == TabelaDeSimbolos.TipoLA.REAL) {
@@ -119,8 +147,7 @@ public class LASemanticoUtils {
             if (ret == null) {
                 ret = aux;
             } else if (ret != aux && aux != TabelaDeSimbolos.TipoLA.INVALIDO) {
-                if ((ret == TabelaDeSimbolos.TipoLA.LITERAL && (aux == TabelaDeSimbolos.TipoLA.INTEIRO || aux == TabelaDeSimbolos.TipoLA.REAL)) ||
-                        (aux == TabelaDeSimbolos.TipoLA.LITERAL && (ret == TabelaDeSimbolos.TipoLA.INTEIRO || ret == TabelaDeSimbolos.TipoLA.REAL))) {
+                if ((ret == TabelaDeSimbolos.TipoLA.LITERAL && (aux == TabelaDeSimbolos.TipoLA.INTEIRO || aux == TabelaDeSimbolos.TipoLA.REAL)) || (aux == TabelaDeSimbolos.TipoLA.LITERAL && (ret == TabelaDeSimbolos.TipoLA.INTEIRO || ret == TabelaDeSimbolos.TipoLA.REAL))) {
                     ret = TabelaDeSimbolos.TipoLA.INVALIDO;
                 } else if (verificarCompatibilidade(ret, aux)) {
                     if (ret == TabelaDeSimbolos.TipoLA.INTEIRO && aux == TabelaDeSimbolos.TipoLA.REAL) {
@@ -141,8 +168,7 @@ public class LASemanticoUtils {
             if (ret == null) {
                 ret = aux;
             } else if (ret != aux && aux != TabelaDeSimbolos.TipoLA.INVALIDO) {
-                if ((ret == TabelaDeSimbolos.TipoLA.LITERAL && (aux == TabelaDeSimbolos.TipoLA.INTEIRO || aux == TabelaDeSimbolos.TipoLA.REAL)) ||
-                        (aux == TabelaDeSimbolos.TipoLA.LITERAL && (ret == TabelaDeSimbolos.TipoLA.INTEIRO || ret == TabelaDeSimbolos.TipoLA.REAL))) {
+                if ((ret == TabelaDeSimbolos.TipoLA.LITERAL && (aux == TabelaDeSimbolos.TipoLA.INTEIRO || aux == TabelaDeSimbolos.TipoLA.REAL)) || (aux == TabelaDeSimbolos.TipoLA.LITERAL && (ret == TabelaDeSimbolos.TipoLA.INTEIRO || ret == TabelaDeSimbolos.TipoLA.REAL))) {
                     ret = TabelaDeSimbolos.TipoLA.INVALIDO;
                 } else if (verificarCompatibilidade(ret, aux)) {
                     if (ret == TabelaDeSimbolos.TipoLA.INTEIRO && aux == TabelaDeSimbolos.TipoLA.REAL) {
@@ -164,9 +190,23 @@ public class LASemanticoUtils {
     public static TabelaDeSimbolos.TipoLA verificarTipo(Escopos escopos, LAParser.Parcela_unarioContext ctx) {
         if (ctx.NUM_INT() != null) return TabelaDeSimbolos.TipoLA.INTEIRO;
         if (ctx.NUM_REAL() != null) return TabelaDeSimbolos.TipoLA.REAL;
-        if (ctx.identificador() != null) return verificarTipo(escopos, ctx.identificador().getText());
-        if (ctx.IDENT() != null) return verificarTipo(escopos, ctx.IDENT().getText()); // Chamada de função
-        // Pega a primeira expressão da lista
+        if (ctx.identificador() != null) {
+            String nomeVar = ctx.identificador().getText();
+            TabelaDeSimbolos.EntradaTabelaDeSimbolos entrada = buscarSimbolo(escopos, nomeVar);
+            if (entrada != null) {
+                // Se ^x (ponteiro), o tipo não é ENDERECO, é o tipo do dado apontado
+                if (ctx.PONTEIRO() != null) {
+                    return entrada.tipo;
+                }
+                // Se é variável normal, retorna o tipo dela
+                return entrada.tipo;
+            }
+        }
+        // Funções (identificador com parâmetros entre parênteses)
+        if (ctx.IDENT() != null) {
+            TabelaDeSimbolos.EntradaTabelaDeSimbolos func = buscarSimbolo(escopos, ctx.IDENT().getText());
+            if (func != null) return func.tipo;
+        }
         if (ctx.expressao() != null && !ctx.expressao().isEmpty()) {
             return verificarTipo(escopos, ctx.expressao(0));
         }
@@ -176,11 +216,16 @@ public class LASemanticoUtils {
     public static TabelaDeSimbolos.TipoLA verificarTipo(Escopos escopos, LAParser.Parcela_nao_unarioContext ctx) {
         if (ctx.identificador() != null) {
             String nomeVar = ctx.identificador().getText();
-            if (!verificarSimbolo(escopos, nomeVar)) {
+            if (buscarSimbolo(escopos, nomeVar) == null) {
                 adicionarErroSemantico(ctx.identificador().start, "identificador " + nomeVar + " nao declarado");
             }
-            return verificarTipo(escopos, nomeVar);
+            // Se usou & (endereço), o tipo dessa parcela é ENDERECO
+            if (ctx.ENDERECO() != null) {
+                return TabelaDeSimbolos.TipoLA.ENDERECO;
+            }
+            TabelaDeSimbolos.EntradaTabelaDeSimbolos ent = buscarSimbolo(escopos, nomeVar);
+            return ent != null ? ent.tipo : TabelaDeSimbolos.TipoLA.INVALIDO;
         }
-        return TabelaDeSimbolos.TipoLA.LITERAL; // Se não for endereço, é CADEIA
+        return TabelaDeSimbolos.TipoLA.LITERAL; // CADEIA
     }
 }
