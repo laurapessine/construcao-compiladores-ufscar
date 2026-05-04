@@ -48,11 +48,23 @@ Para arquivos a partir do T3 (que não contenham "t1" ou "t2" no nome da pasta),
 java -jar target/trabalho-compiladores-1.0-SNAPSHOT-jar-with-dependencies.jar entrada_t3.txt saida.txt
 ```
 
+### T4 - Analisador semântico (ponteiros e registros)
+Na fase T4, o analisador semântico foi expandido para suportar o gerenciamento de escopos aninhados, garantindo o funcionamento de sub-rotinas (funções e procedimentos) e tipos estendidos (registros/structs e ponteiros). O compilador passa a checar a compatibilidade e a quantidade de parâmetros em chamadas de função, além de verificar comandos restritos, como o uso do `retorne` fora de um escopo válido.
+
+**Exemplo de execução do T4:**
+```bash
+java -jar target/trabalho-compiladores-1.0-SNAPSHOT-jar-with-dependencies.jar entrada_t4.txt saida.txt
+```
+
 ---
 
 ## Validação com o corretor automático
-Para testar o compilador em lote usando a ferramenta oficial da disciplina, certifique-se de ter o arquivo `.jar` do corretor na raiz do projeto e execute (substituindo `t3` pela fase desejada):
-
+Para testar o compilador em lote usando a ferramenta oficial da disciplina, certifique-se de ter o arquivo `.jar` do corretor na raiz do projeto e execute (substituindo `t4` pela fase desejada):
 ```bash
-java -jar compiladores-corretor-automatico-1.0-SNAPSHOT-jar-with-dependencies.jar "java -jar target/trabalho-compiladores-1.0-SNAPSHOT-jar-with-dependencies.jar" gcc temp casos-de-teste/casos-de-teste "824388" t3
+java -jar compiladores-corretor-automatico-1.0-SNAPSHOT-jar-with-dependencies.jar "java -jar target/trabalho-compiladores-1.0-SNAPSHOT-jar-with-dependencies.jar" gcc temp casos-de-teste "824388" t4
 ```
+
+## Créditos e Agradecimentos
+Este projeto foi desenvolvido como parte da disciplina de Construção de Compiladores ministrada pelo Prof. Daniel Lucrédio no Departamento de Computação da UFSCar (DC/UFSCar).
+
+A especificação da linguagem LA (Linguagem Algorítmica), o corretor automático e os materiais base da disciplina podem ser encontrados no repositório oficial do professor: [dlucredio/cursocompiladores](https://github.com/dlucredio/cursocompiladores).

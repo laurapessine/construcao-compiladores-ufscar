@@ -64,7 +64,6 @@ build/
 .DS_Store
 
 # Arquivos e pastas do corretor automático e testes
-casos-de-teste/
 temp/
 entrada.txt
 saida.txt
