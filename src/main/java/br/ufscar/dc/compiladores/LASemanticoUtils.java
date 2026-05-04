@@ -24,35 +24,50 @@ public class LASemanticoUtils {
         return false;
     }
 
+    // Garante que os identificadores com "." peguem o tipo certo do último pedaço
     public static TabelaDeSimbolos.TipoLA verificarTipo(Escopos escopos, String nomeVar) {
-        for (TabelaDeSimbolos tabela : escopos.percorrerEscoposAninhados()) {
-            if (tabela.existe(nomeVar)) {
-                return tabela.verificar(nomeVar).tipo;
-            }
+        TabelaDeSimbolos.EntradaTabelaDeSimbolos entrada = buscarSimbolo(escopos, nomeVar);
+        if (entrada != null) {
+            return entrada.tipo;
         }
         return TabelaDeSimbolos.TipoLA.INVALIDO;
     }
 
-    // Busca um símbolo lidando com registros (ex: "aluno.idade")
+    // Método principal de busca
     public static TabelaDeSimbolos.EntradaTabelaDeSimbolos buscarSimbolo(Escopos escopos, String nomeVar) {
-        if (nomeVar.contains(".")) {
-            String[] partes = nomeVar.split("\\."); // Separa "aluno" de "idade"
-            for (TabelaDeSimbolos tabela : escopos.percorrerEscoposAninhados()) {
-                if (tabela.existe(partes[0])) {
-                    TabelaDeSimbolos.EntradaTabelaDeSimbolos registro = tabela.verificar(partes[0]);
-                    // Se a primeira parte existir, procura a segunda parte DENTRO do registro
-                    if (registro.camposRegistro != null && registro.camposRegistro.existe(partes[1])) {
-                        return registro.camposRegistro.verificar(partes[1]);
-                    }
-                }
-            }
-        } else {
-            // Busca normal (variável comum)
+        // Se a busca for simples (sem ponto)
+        if (!nomeVar.contains(".")) {
             for (TabelaDeSimbolos tabela : escopos.percorrerEscoposAninhados()) {
                 if (tabela.existe(nomeVar)) {
                     return tabela.verificar(nomeVar);
                 }
             }
+            return null;
+        }
+        // Se for uma busca composta (ex: ponto1.x), quebra o nome
+        String[] partes = nomeVar.split("\\.");
+        TabelaDeSimbolos tabelaAtual = null;
+        // Acha a primeira parte (ex: ponto1) nos escopos globais/locais
+        for (TabelaDeSimbolos tabela : escopos.percorrerEscoposAninhados()) {
+            if (tabela.existe(partes[0])) {
+                tabelaAtual = tabela.verificar(partes[0]).camposRegistro;
+                break;
+            }
+        }
+        if (tabelaAtual == null) return null;
+        // Desce nos registros (ex: aluno.endereco.rua)
+        for (int i = 1; i < partes.length - 1; i++) {
+            if (tabelaAtual.existe(partes[i])) {
+                tabelaAtual = tabelaAtual.verificar(partes[i]).camposRegistro;
+                if (tabelaAtual == null) return null;
+            } else {
+                return null;
+            }
+        }
+        // Retorna a última parte (ex: x, ou rua)
+        String ultimaParte = partes[partes.length - 1];
+        if (tabelaAtual.existe(ultimaParte)) {
+            return tabelaAtual.verificar(ultimaParte);
         }
         return null;
     }

@@ -2,6 +2,8 @@ package br.ufscar.dc.compiladores;
 
 import org.antlr.v4.runtime.Token;
 
+import java.util.List;
+
 public class LASemantico extends LAParserBaseVisitor<Void> {
     Escopos escoposAninhados;
 
@@ -99,29 +101,13 @@ public class LASemantico extends LAParserBaseVisitor<Void> {
     @Override
     public Void visitDeclaracao_local(LAParser.Declaracao_localContext ctx) {
         TabelaDeSimbolos escopoAtual = escoposAninhados.obterEscopoAtual();
-        // 1. O caminho do "declare" (variáveis)
+        // O caminho do "declare" (variáveis)
         if (ctx.DECLARE() != null) {
-            String tipoTexto = ctx.variavel().tipo().getText();
-            TabelaDeSimbolos.TipoLA tipoVariavel = determinarTipo(tipoTexto);
-            // ERRO 2: Tipo não declarado
-            // Se o tipo for INVALIDO, significa que não é um tipo básico. Checa se o usuário criou esse tipo.
-            if (tipoVariavel == TabelaDeSimbolos.TipoLA.INVALIDO) {
-                String nomeTipo = tipoTexto.replace("^", "");
-                if (!LASemanticoUtils.verificarSimbolo(escoposAninhados, nomeTipo)) {
-                    LASemanticoUtils.adicionarErroSemantico(ctx.variavel().tipo().start, "tipo " + nomeTipo + " nao declarado");
-                }
-            }
-            // Uma mesma linha de "declare" pode ter várias variáveis separadas por vírgula
             for (LAParser.IdentificadorContext idCtx : ctx.variavel().identificador()) {
                 String nomeVar = idCtx.getText();
-                // ERRO 1: Identificador já declarado (só olha para o escopo atual)
-                if (escopoAtual.existe(nomeVar)) {
-                    LASemanticoUtils.adicionarErroSemantico(idCtx.start, "identificador " + nomeVar + " ja declarado anteriormente");
-                } else {
-                    escopoAtual.adicionar(nomeVar, tipoVariavel, TabelaDeSimbolos.EstruturaLA.VARIAVEL, tipoTexto);
-                }
+                // O método auxiliar já trata a inserção de variáveis, registros e ponteiros
+                inserirNaTabela(nomeVar, ctx.variavel().tipo(), idCtx.start);
             }
-        // 2. O caminho da "constante"
         } else if (ctx.CONSTANTE() != null) {
             String nomeConst = ctx.IDENT().getText();
             if (escopoAtual.existe(nomeConst)) {
@@ -130,17 +116,54 @@ public class LASemantico extends LAParserBaseVisitor<Void> {
                 TabelaDeSimbolos.TipoLA tipoConst = determinarTipo(ctx.tipo_basico().getText());
                 escopoAtual.adicionar(nomeConst, tipoConst, TabelaDeSimbolos.EstruturaLA.CONSTANTE);
             }
-        // 3. O caminho do "tipo" (tipos criados pelo usuário)
+            // O caminho do "tipo" (tipos criados pelo usuário)
         } else if (ctx.TIPO() != null) {
             String nomeTipo = ctx.IDENT().getText();
             if (escopoAtual.existe(nomeTipo)) {
                 LASemanticoUtils.adicionarErroSemantico(ctx.IDENT().getSymbol(), "identificador " + nomeTipo + " ja declarado anteriormente");
             } else {
-                // Tipos criados pelo usuário entram como REGISTRO ou outro tipo estendido
+                // Ao criar um tipo (ex: tipo aluno : registro...), insere no escopo atual e já popula os campos
                 escopoAtual.adicionar(nomeTipo, TabelaDeSimbolos.TipoLA.REGISTRO, TabelaDeSimbolos.EstruturaLA.TIPO);
+                if (ctx.tipo().registro() != null) {
+                    popularRegistro(escopoAtual.verificar(nomeTipo).camposRegistro, ctx.tipo().registro());
+                }
             }
         }
         return super.visitDeclaracao_local(ctx);
+    }
+
+    @Override
+    public Void visitDeclaracao_global(LAParser.Declaracao_globalContext ctx) {
+        String nome = ctx.IDENT().getText();
+        TabelaDeSimbolos escopoAtual = escoposAninhados.obterEscopoAtual();
+        // Verifica se o nome da função/procedimento já foi usado
+        if (escopoAtual.existe(nome)) {
+            LASemanticoUtils.adicionarErroSemantico(ctx.IDENT().getSymbol(), "identificador " + nome + " ja declarado anteriormente");
+            return super.visitDeclaracao_global(ctx);
+        }
+        TabelaDeSimbolos.EstruturaLA estrutura = ctx.FUNCAO() != null ? TabelaDeSimbolos.EstruturaLA.FUNCAO : TabelaDeSimbolos.EstruturaLA.PROCEDIMENTO;
+        TabelaDeSimbolos.TipoLA tipoRetorno = ctx.tipo_estendido() != null ? determinarTipo(ctx.tipo_estendido().getText()) : TabelaDeSimbolos.TipoLA.INVALIDO;
+        TabelaDeSimbolos.EntradaTabelaDeSimbolos entrada = new TabelaDeSimbolos.EntradaTabelaDeSimbolos(nome, tipoRetorno, estrutura);
+        escopoAtual.adicionar(entrada);
+        // Abre um novo escopo DENTRO da função
+        escoposAninhados.criarNovoEscopo();
+        TabelaDeSimbolos escopoFuncao = escoposAninhados.obterEscopoAtual();
+        // Adiciona os parâmetros na tabela da função (assinatura) E no escopo local como variáveis
+        if (ctx.parametros() != null) {
+            for (LAParser.ParametroContext paramCtx : ctx.parametros().parametro()) {
+                for (LAParser.IdentificadorContext idCtx : paramCtx.identificador()) {
+                    String nomeParam = idCtx.getText();
+                    TabelaDeSimbolos.TipoLA tipoParam = determinarTipo(paramCtx.tipo_estendido().getText());
+                    entrada.tiposParametros.add(tipoParam); // Assinatura para checar na hora de chamar
+                    escopoFuncao.adicionar(nomeParam, tipoParam, TabelaDeSimbolos.EstruturaLA.VARIAVEL); // Variável local
+                }
+            }
+        }
+        // Continua a visitar o corpo da função (comandos, etc)
+        super.visitDeclaracao_global(ctx);
+        // Fecha o escopo quando a função termina
+        escoposAninhados.abandonarEscopo();
+        return null; // O super já foi chamado antes de fechar o escopo
     }
 
     // ERRO 3: Identificador não declarado (exemplo no leia)
@@ -176,13 +199,38 @@ public class LASemantico extends LAParserBaseVisitor<Void> {
         return super.visitCmdAtribuicao(ctx);
     }
 
-    // ERRO 3: Identificador não declarado (exemplo no uso dentro de expressões/contas matemáticas)
+    // ERRO 3 e 2: Variáveis e Funções em expressões
     @Override
     public Void visitParcela_unario(LAParser.Parcela_unarioContext ctx) {
+        // 1. Verifica se é uma variável normal
         if (ctx.identificador() != null) {
             String nomeVar = ctx.identificador().getText();
-            if (!LASemanticoUtils.verificarSimbolo(escoposAninhados, nomeVar)) {
+            if (LASemanticoUtils.buscarSimbolo(escoposAninhados, nomeVar) == null) {
                 LASemanticoUtils.adicionarErroSemantico(ctx.identificador().start, "identificador " + nomeVar + " nao declarado");
+            }
+        }
+        // 2. Verifica se é uma chamada de função
+        if (ctx.IDENT() != null) {
+            String nomeFunc = ctx.IDENT().getText();
+            TabelaDeSimbolos.EntradaTabelaDeSimbolos entrada = LASemanticoUtils.buscarSimbolo(escoposAninhados, nomeFunc);
+            if (entrada == null) {
+                LASemanticoUtils.adicionarErroSemantico(ctx.IDENT().getSymbol(), "identificador " + nomeFunc + " nao declarado");
+            } else {
+                List<TabelaDeSimbolos.TipoLA> tiposEsperados = entrada.tiposParametros;
+                List<LAParser.ExpressaoContext> expressoes = ctx.expressao();
+                if (tiposEsperados.size() != expressoes.size()) {
+                    LASemanticoUtils.adicionarErroSemantico(ctx.IDENT().getSymbol(), "incompatibilidade de parametros na chamada de " + nomeFunc);
+                } else {
+                    for (int i = 0; i < tiposEsperados.size(); i++) {
+                        TabelaDeSimbolos.TipoLA tipoEsperado = tiposEsperados.get(i);
+                        TabelaDeSimbolos.TipoLA tipoPassado = LASemanticoUtils.verificarTipo(escoposAninhados, expressoes.get(i));
+                        // Na função, o tipo tem que ser exatamente o mesmo
+                        if (tipoEsperado != tipoPassado) {
+                            LASemanticoUtils.adicionarErroSemantico(ctx.IDENT().getSymbol(), "incompatibilidade de parametros na chamada de " + nomeFunc);
+                            break;
+                        }
+                    }
+                }
             }
         }
         return super.visitParcela_unario(ctx);
@@ -199,5 +247,54 @@ public class LASemantico extends LAParserBaseVisitor<Void> {
             case "logico" -> TabelaDeSimbolos.TipoLA.LOGICO;
             default -> TabelaDeSimbolos.TipoLA.INVALIDO; // Para tipos customizados ou registros
         };
+    }
+
+    @Override
+    public Void visitCmdRetorne(LAParser.CmdRetorneContext ctx) {
+        // Checa se o comando "retorne" está solto no algoritmo principal ou procedimento
+        boolean dentroDeFuncao = false;
+        // Pula de pai em pai na árvore para tentar achar a declaração de função
+        org.antlr.v4.runtime.RuleContext regraAtual = ctx;
+        while (regraAtual != null) {
+            if (regraAtual instanceof LAParser.Declaracao_globalContext && ((LAParser.Declaracao_globalContext) regraAtual).FUNCAO() != null) {
+                dentroDeFuncao = true;
+                break;
+            }
+            regraAtual = regraAtual.parent;
+        }
+        if (!dentroDeFuncao) {
+            LASemanticoUtils.adicionarErroSemantico(ctx.start, "comando retorne nao permitido nesse escopo");
+        }
+        return super.visitCmdRetorne(ctx);
+    }
+
+    // ERRO 3 e 2: Chamada de procedimento (parâmetros errados e não declarado)
+    @Override
+    public Void visitCmdChamada(LAParser.CmdChamadaContext ctx) {
+        String nome = ctx.IDENT().getText();
+        TabelaDeSimbolos.EntradaTabelaDeSimbolos entrada = LASemanticoUtils.buscarSimbolo(escoposAninhados, nome);
+        if (entrada == null) {
+            LASemanticoUtils.adicionarErroSemantico(ctx.IDENT().getSymbol(), "identificador " + nome + " nao declarado");
+        } else {
+            // Pega as listas de parâmetros esperados e argumentos passados
+            List<TabelaDeSimbolos.TipoLA> tiposEsperados = entrada.tiposParametros;
+            List<LAParser.ExpressaoContext> expressoes = ctx.expressao();
+            // Checa a quantidade de parâmetros
+            if (tiposEsperados.size() != expressoes.size()) {
+                LASemanticoUtils.adicionarErroSemantico(ctx.IDENT().getSymbol(), "incompatibilidade de parametros na chamada de " + nome);
+            } else {
+                // Checa o tipo de cada parâmetro
+                for (int i = 0; i < tiposEsperados.size(); i++) {
+                    TabelaDeSimbolos.TipoLA tipoEsperado = tiposEsperados.get(i);
+                    TabelaDeSimbolos.TipoLA tipoPassado = LASemanticoUtils.verificarTipo(escoposAninhados, expressoes.get(i));
+                    // Na chamada de procedimento, o tipo também deve ser exatamente igual
+                    if (tipoEsperado != tipoPassado) {
+                        LASemanticoUtils.adicionarErroSemantico(ctx.IDENT().getSymbol(), "incompatibilidade de parametros na chamada de " + nome);
+                        break; // Mostra o erro uma vez só para essa chamada
+                    }
+                }
+            }
+        }
+        return super.visitCmdChamada(ctx);
     }
 }
