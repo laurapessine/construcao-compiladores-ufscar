@@ -58,7 +58,19 @@ public class LAGeradorC extends LAParserBaseVisitor<Void> {
                     if (paramCtx.getText().startsWith("var")) saida.append("*"); // Parâmetro por referência
                     saida.append(nomeParam);
                     if (j < paramCtx.identificador().size() - 1) saida.append(", ");
-                    escopoAtual.adicionar(nomeParam, determinarTipo(tipoLA), TabelaDeSimbolos.EstruturaLA.VARIAVEL);
+                    // Adiciona os parâmetros na tabela para saber os tipos depois
+                    TabelaDeSimbolos.TipoLA tipoAux = determinarTipo(tipoLA);
+                    if (tipoAux == TabelaDeSimbolos.TipoLA.INVALIDO) {
+                        TabelaDeSimbolos.EntradaTabelaDeSimbolos entradaTipo = LASemanticoUtils.buscarSimbolo(escoposAninhados, tipoLA);
+                        if (entradaTipo != null) {
+                            escopoAtual.adicionar(nomeParam, TabelaDeSimbolos.TipoLA.REGISTRO, TabelaDeSimbolos.EstruturaLA.VARIAVEL);
+                            escopoAtual.verificar(nomeParam).camposRegistro = entradaTipo.camposRegistro;
+                        } else {
+                            escopoAtual.adicionar(nomeParam, tipoAux, TabelaDeSimbolos.EstruturaLA.VARIAVEL);
+                        }
+                    } else {
+                        escopoAtual.adicionar(nomeParam, tipoAux, TabelaDeSimbolos.EstruturaLA.VARIAVEL);
+                    }
                 }
                 if (i < ctx.parametros().parametro().size() - 1) saida.append(", ");
             }
@@ -74,9 +86,10 @@ public class LAGeradorC extends LAParserBaseVisitor<Void> {
     // --- 2. DECLARAÇÕES LOCAIS (variáveis, constantes, tipos e registros) ---
     @Override
     public Void visitDeclaracao_local(LAParser.Declaracao_localContext ctx) {
+        TabelaDeSimbolos escopoAtual = escoposAninhados.obterEscopoAtual();
         if (ctx.DECLARE() != null) {
             if (ctx.variavel().tipo().registro() != null) {
-                // Registro inline
+                // Registro declarado na hora (inline)
                 saida.append("    struct {\n");
                 for (LAParser.VariavelContext varCtx : ctx.variavel().tipo().registro().variavel()) {
                     String tipoCampoLA = varCtx.tipo().getText();
@@ -92,27 +105,38 @@ public class LAGeradorC extends LAParserBaseVisitor<Void> {
                 }
                 saida.append("    } ");
                 for (int i = 0; i < ctx.variavel().identificador().size(); i++) {
-                    saida.append(ctx.variavel().identificador(i).getText());
+                    String nomeVar = ctx.variavel().identificador(i).getText();
+                    saida.append(nomeVar);
                     if (i < ctx.variavel().identificador().size() - 1) saida.append(", ");
+                    // Adiciona o registro e popula os campos para o gerador lembrar
+                    escopoAtual.adicionar(nomeVar, TabelaDeSimbolos.TipoLA.REGISTRO, TabelaDeSimbolos.EstruturaLA.VARIAVEL);
+                    popularRegistro(escopoAtual.verificar(nomeVar).camposRegistro, ctx.variavel().tipo().registro());
                 }
                 saida.append(";\n");
             } else {
-                // Declaração normal
+                // Declaração normal ou de um tipo já criado
                 String tipoLA = ctx.variavel().tipo().getText();
                 String tipoC = mapearTipoC(tipoLA);
-                TabelaDeSimbolos escopoAtual = escoposAninhados.obterEscopoAtual();
                 for (LAParser.IdentificadorContext idCtx : ctx.variavel().identificador()) {
                     String nomeVar = idCtx.getText();
                     if (tipoLA.replace("^", "").equals("literal")) {
-                        String cleanName = nomeVar.contains("[") ? nomeVar.substring(0, nomeVar.indexOf("[")) : nomeVar;
-                        if (nomeVar.contains("["))
-                            saida.append("    ").append(tipoC).append(" ").append(nomeVar).append("[80];\n");
-                        else saida.append("    ").append(tipoC).append(" ").append(nomeVar).append("[80];\n");
+                        saida.append("    ").append(tipoC).append(" ").append(nomeVar).append("[80];\n");
                     } else {
                         saida.append("    ").append(tipoC).append(" ").append(nomeVar).append(";\n");
                     }
-                    // Guarda no escopo para saber o tipo na hora de fazer scanf/printf
-                    escopoAtual.adicionar(nomeVar, determinarTipo(tipoLA), TabelaDeSimbolos.EstruturaLA.VARIAVEL);
+                    // Ensina para a tabela qual é o tipo (mesmo se for registro customizado)
+                    TabelaDeSimbolos.TipoLA tipoAux = determinarTipo(tipoLA);
+                    if (tipoAux == TabelaDeSimbolos.TipoLA.INVALIDO) {
+                        TabelaDeSimbolos.EntradaTabelaDeSimbolos entradaTipo = LASemanticoUtils.buscarSimbolo(escoposAninhados, tipoLA);
+                        if (entradaTipo != null) {
+                            escopoAtual.adicionar(nomeVar, TabelaDeSimbolos.TipoLA.REGISTRO, TabelaDeSimbolos.EstruturaLA.VARIAVEL);
+                            escopoAtual.verificar(nomeVar).camposRegistro = entradaTipo.camposRegistro;
+                        } else {
+                            escopoAtual.adicionar(nomeVar, tipoAux, TabelaDeSimbolos.EstruturaLA.VARIAVEL);
+                        }
+                    } else {
+                        escopoAtual.adicionar(nomeVar, tipoAux, TabelaDeSimbolos.EstruturaLA.VARIAVEL);
+                    }
                 }
             }
         } else if (ctx.CONSTANTE() != null) {
@@ -120,6 +144,7 @@ public class LAGeradorC extends LAParserBaseVisitor<Void> {
             String nome = ctx.IDENT().getText();
             String valor = getExpressaoC(ctx.valor_constante());
             saida.append("    const ").append(tipoC).append(" ").append(nome).append(" = ").append(valor).append(";\n");
+            escopoAtual.adicionar(nome, determinarTipo(ctx.tipo_basico().getText()), TabelaDeSimbolos.EstruturaLA.CONSTANTE);
         } else if (ctx.TIPO() != null) {
             // Definição de tipo struct
             String nomeTipo = ctx.IDENT().getText();
@@ -138,9 +163,35 @@ public class LAGeradorC extends LAParserBaseVisitor<Void> {
                     }
                 }
                 saida.append("} ").append(nomeTipo).append(";\n");
+                // Grava o "molde" da struct na tabela
+                escopoAtual.adicionar(nomeTipo, TabelaDeSimbolos.TipoLA.REGISTRO, TabelaDeSimbolos.EstruturaLA.TIPO);
+                popularRegistro(escopoAtual.verificar(nomeTipo).camposRegistro, ctx.tipo().registro());
             }
         }
         return null;
+    }
+
+    // --- MÉTODOS AUXILIARES PARA POPULAR REGISTRO ---
+    private void popularRegistro(TabelaDeSimbolos tabelaRegistro, LAParser.RegistroContext ctx) {
+        for (LAParser.VariavelContext varCtx : ctx.variavel()) {
+            String tipoCampoLA = varCtx.tipo().getText();
+            TabelaDeSimbolos.TipoLA tipoCampo = determinarTipo(tipoCampoLA);
+            String nomeTipoEstendido = null;
+            if (tipoCampo == TabelaDeSimbolos.TipoLA.INVALIDO) {
+                tipoCampo = TabelaDeSimbolos.TipoLA.REGISTRO;
+                nomeTipoEstendido = tipoCampoLA;
+            }
+            for (LAParser.IdentificadorContext identCtx : varCtx.identificador()) {
+                String nomeCampo = identCtx.getText();
+                tabelaRegistro.adicionar(nomeCampo, tipoCampo, TabelaDeSimbolos.EstruturaLA.VARIAVEL, nomeTipoEstendido);
+                if (nomeTipoEstendido != null) {
+                    TabelaDeSimbolos.EntradaTabelaDeSimbolos entradaTipo = LASemanticoUtils.buscarSimbolo(escoposAninhados, nomeTipoEstendido);
+                    if (entradaTipo != null && entradaTipo.camposRegistro != null) {
+                        tabelaRegistro.verificar(nomeCampo).camposRegistro = entradaTipo.camposRegistro;
+                    }
+                }
+            }
+        }
     }
 
     // --- 3. COMANDOS BÁSICOS (LEIA, ESCREVA, ATRIBUIÇÃO, RETORNO) ---
