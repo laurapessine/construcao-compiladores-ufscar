@@ -56,12 +56,20 @@ Na fase T4, o analisador semântico foi expandido para suportar o gerenciamento 
 java -jar target/trabalho-compiladores-1.0-SNAPSHOT-jar-with-dependencies.jar entrada_t4.txt saida.txt
 ```
 
+### T5 - Gerador de código (C)
+Na fase final (T5), o compilador atinge o seu objetivo completo. Após passar por todas as validações léxicas, sintáticas e semânticas sem encontrar nenhum erro, o compilador utiliza o padrão Visitor para percorrer a árvore de sintaxe abstrata (AST) e traduzir o código da Linguagem Algorítmica (LA) para código **C** válido e executável. A tradução engloba estruturas de controle de fluxo, expressões lógicas/matemáticas, ponteiros, funções e registros (`structs`). Caso haja qualquer erro nas fases anteriores, o código C não é gerado e a compilação é abortada exibindo os erros.
+
+**Exemplo de execução do T5:**
+```bash
+java -jar target/trabalho-compiladores-1.0-SNAPSHOT-jar-with-dependencies.jar entrada_t5.txt saida.c
+```
+
 ---
 
 ## Validação com o corretor automático
-Para testar o compilador em lote usando a ferramenta oficial da disciplina, certifique-se de ter o arquivo `.jar` do corretor na raiz do projeto e execute (substituindo `t4` pela fase desejada):
+Para testar o compilador em lote usando a ferramenta oficial da disciplina, certifique-se de ter o arquivo `.jar` do corretor na raiz do projeto e execute (substituindo `t5` pela fase desejada):
 ```bash
-java -jar compiladores-corretor-automatico-1.0-SNAPSHOT-jar-with-dependencies.jar "java -jar target/trabalho-compiladores-1.0-SNAPSHOT-jar-with-dependencies.jar" gcc temp casos-de-teste "824388" t4
+java -jar compiladores-corretor-automatico-1.0-SNAPSHOT-jar-with-dependencies.jar "java -jar target/trabalho-compiladores-1.0-SNAPSHOT-jar-with-dependencies.jar" gcc temp casos-de-teste "824388" t5
 ```
 
 ## Créditos e Agradecimentos
