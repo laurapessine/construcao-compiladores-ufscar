@@ -1,4 +1,8 @@
 # Compilador - Linguagem Algorítmica (LA)
+![Java](https://img.shields.io/badge/Java-21-orange.svg)
+![Maven](https://img.shields.io/badge/Maven-Build-blue.svg)
+![ANTLR](https://img.shields.io/badge/ANTLR-v4-red.svg)
+![Build Status](https://github.com/laurapessine/construcao-compiladores-ufscar/actions/workflows/maven.yml/badge.svg)
 
 Este repositório contém os trabalhos práticos da disciplina de Construção de Compiladores (DC/UFSCar). O projeto consiste na implementação de um compilador completo para a linguagem LA (Linguagem Algorítmica), desenvolvida pelo Prof. Jander, abrangendo desde a análise léxica até a geração de código.
 
