@@ -20,6 +20,7 @@ public class Main {
             try (PrintWriter pw = new PrintWriter(new FileWriter(arquivoSaida))) {
                 boolean isT1 = arquivoEntrada.contains("t1");
                 boolean isT2 = arquivoEntrada.contains("t2");
+                boolean isT5 = arquivoEntrada.contains("t5");
                 boolean erroLexico = false;
                 Token t;
                 // 1. ANÁLISE LÉXICA
@@ -43,8 +44,9 @@ public class Main {
                 }
                 // 2. ANÁLISE SINTÁTICA E SEMÂNTICA
                 if (!isT1) {
+                    boolean codigoGerado = false; // Flag para controlar a impressão do "Fim da compilacao"
                     if (!erroLexico) {
-                        lexer.reset(); // Rebobina os tokens para o parser poder consumir desde o início
+                        lexer.reset(); // Rebobina os tokens para o parser consumir desde o início
                         CommonTokenStream tokens = new CommonTokenStream(lexer);
                         LAParser parser = new LAParser(tokens);
                         parser.removeErrorListeners();
@@ -55,23 +57,33 @@ public class Main {
                             LAParser.ProgramaContext arvore = parser.programa();
                             // 3. ANÁLISE SEMÂNTICA (T3 em diante)
                             if (!isT2) {
-                                // Limpa os erros de execuções anteriores (importante para o corretor)
+                                // Limpa os erros de execuções anteriores
                                 LASemanticoUtils.errosSemanticos.clear();
 
                                 // Instancia e aciona o Visitor semântico
                                 LASemantico as = new LASemantico();
                                 as.visitPrograma(arvore);
-
-                                // Imprime todos os erros semânticos encontrados
-                                for (String erro : LASemanticoUtils.errosSemanticos) {
-                                    pw.println(erro);
+                                if (!LASemanticoUtils.errosSemanticos.isEmpty()) {
+                                    // Imprime os erros semânticos encontrados
+                                    for (String erro : LASemanticoUtils.errosSemanticos) {
+                                        pw.println(erro);
+                                    }
+                                } else if (isT5) {
+                                    // 4. GERAÇÃO DE CÓDIGO
+                                    LAGeradorC gerador = new LAGeradorC();
+                                    gerador.visitPrograma(arvore);
+                                    pw.print(gerador.saida.toString());
+                                    codigoGerado = true; // Marca que o código C foi gerado com sucesso
                                 }
                             }
                         } catch (ParseCancellationException e) {
                             // Erro sintático capturado. A mensagem já foi impressa.
                         }
                     }
-                    pw.println("Fim da compilacao");
+                    // Imprime "Fim da compilacao" APENAS se o código C NÃO tiver sido gerado
+                    if (!codigoGerado) {
+                        pw.println("Fim da compilacao");
+                    }
                 }
             }
         } catch (IOException ex) {
