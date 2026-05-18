@@ -59,18 +59,7 @@ public class LAGeradorC extends LAParserBaseVisitor<Void> {
                     saida.append(nomeParam);
                     if (j < paramCtx.identificador().size() - 1) saida.append(", ");
                     // Adiciona os parâmetros na tabela para saber os tipos depois
-                    TabelaDeSimbolos.TipoLA tipoAux = determinarTipo(tipoLA);
-                    if (tipoAux == TabelaDeSimbolos.TipoLA.INVALIDO) {
-                        TabelaDeSimbolos.EntradaTabelaDeSimbolos entradaTipo = LASemanticoUtils.buscarSimbolo(escoposAninhados, tipoLA);
-                        if (entradaTipo != null) {
-                            escopoAtual.adicionar(nomeParam, TabelaDeSimbolos.TipoLA.REGISTRO, TabelaDeSimbolos.EstruturaLA.VARIAVEL);
-                            escopoAtual.verificar(nomeParam).camposRegistro = entradaTipo.camposRegistro;
-                        } else {
-                            escopoAtual.adicionar(nomeParam, tipoAux, TabelaDeSimbolos.EstruturaLA.VARIAVEL);
-                        }
-                    } else {
-                        escopoAtual.adicionar(nomeParam, tipoAux, TabelaDeSimbolos.EstruturaLA.VARIAVEL);
-                    }
+                    registrarVariavelNaTabela(escopoAtual, nomeParam, tipoLA);
                 }
                 if (i < ctx.parametros().parametro().size() - 1) saida.append(", ");
             }
@@ -125,18 +114,7 @@ public class LAGeradorC extends LAParserBaseVisitor<Void> {
                         saida.append("    ").append(tipoC).append(" ").append(nomeVar).append(";\n");
                     }
                     // Ensina para a tabela qual é o tipo (mesmo se for registro customizado)
-                    TabelaDeSimbolos.TipoLA tipoAux = determinarTipo(tipoLA);
-                    if (tipoAux == TabelaDeSimbolos.TipoLA.INVALIDO) {
-                        TabelaDeSimbolos.EntradaTabelaDeSimbolos entradaTipo = LASemanticoUtils.buscarSimbolo(escoposAninhados, tipoLA);
-                        if (entradaTipo != null) {
-                            escopoAtual.adicionar(nomeVar, TabelaDeSimbolos.TipoLA.REGISTRO, TabelaDeSimbolos.EstruturaLA.VARIAVEL);
-                            escopoAtual.verificar(nomeVar).camposRegistro = entradaTipo.camposRegistro;
-                        } else {
-                            escopoAtual.adicionar(nomeVar, tipoAux, TabelaDeSimbolos.EstruturaLA.VARIAVEL);
-                        }
-                    } else {
-                        escopoAtual.adicionar(nomeVar, tipoAux, TabelaDeSimbolos.EstruturaLA.VARIAVEL);
-                    }
+                    registrarVariavelNaTabela(escopoAtual, nomeVar, tipoLA);
                 }
             }
         } else if (ctx.CONSTANTE() != null) {
@@ -377,11 +355,10 @@ public class LAGeradorC extends LAParserBaseVisitor<Void> {
     private String mapearTipoC(String tipoLA) {
         String base = tipoLA.replace("^", "");
         String tipoC = switch (base) {
-            case "inteiro" -> "int";
+            case "inteiro", "logico" -> "int"; // Agrupados aqui
             case "real" -> "float";
             case "literal" -> "char";
-            case "logico" -> "int";
-            default -> base; // Em caso de tipos de registros customizados
+            default -> base;
         };
         // Se for um ponteiro, insere o "*" do C
         if (tipoLA.startsWith("^")) {
@@ -399,5 +376,21 @@ public class LAGeradorC extends LAParserBaseVisitor<Void> {
             case "logico" -> TabelaDeSimbolos.TipoLA.LOGICO;
             default -> TabelaDeSimbolos.TipoLA.INVALIDO;
         };
+    }
+
+    // Método auxiliar para evitar código duplicado ao registrar variáveis
+    private void registrarVariavelNaTabela(TabelaDeSimbolos escopo, String nome, String tipoLA) {
+        TabelaDeSimbolos.TipoLA tipoAux = determinarTipo(tipoLA);
+        if (tipoAux == TabelaDeSimbolos.TipoLA.INVALIDO) {
+            TabelaDeSimbolos.EntradaTabelaDeSimbolos entradaTipo = LASemanticoUtils.buscarSimbolo(escoposAninhados, tipoLA);
+            if (entradaTipo != null) {
+                escopo.adicionar(nome, TabelaDeSimbolos.TipoLA.REGISTRO, TabelaDeSimbolos.EstruturaLA.VARIAVEL);
+                escopo.verificar(nome).camposRegistro = entradaTipo.camposRegistro;
+            } else {
+                escopo.adicionar(nome, tipoAux, TabelaDeSimbolos.EstruturaLA.VARIAVEL);
+            }
+        } else {
+            escopo.adicionar(nome, tipoAux, TabelaDeSimbolos.EstruturaLA.VARIAVEL);
+        }
     }
 }
