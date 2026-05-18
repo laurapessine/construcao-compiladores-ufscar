@@ -18,9 +18,11 @@ public class Main {
             CharStream cs = CharStreams.fromFileName(arquivoEntrada);
             LALexer lexer = new LALexer(cs);
             try (PrintWriter pw = new PrintWriter(new FileWriter(arquivoSaida))) {
-                boolean isT1 = arquivoEntrada.contains("t1");
-                boolean isT2 = arquivoEntrada.contains("t2");
-                boolean isT5 = arquivoEntrada.contains("t5");
+                String entradaLower = arquivoEntrada.toLowerCase();
+                String saidaLower = arquivoSaida.toLowerCase();
+                boolean isT1 = entradaLower.contains("t1") || saidaLower.contains("t1");
+                boolean isT2 = entradaLower.contains("t2") || saidaLower.contains("t2");
+                boolean isT5 = entradaLower.contains("t5") || saidaLower.contains("t5") || saidaLower.endsWith(".c");
                 boolean erroLexico = false;
                 Token t;
                 // 1. ANÁLISE LÉXICA
