@@ -9,6 +9,7 @@ Este repositório contém os trabalhos práticos da disciplina de Construção d
 Para compilar e executar este projeto, você precisará ter na sua máquina:
 * **Java 21** (ou superior)
 * **Maven** (gerenciador de dependências e build)
+* **GCC (GNU Compiler Collection)** (necessário na fase T5 para compilar o código C gerado)
 
 *(O reconhecimento de padrões é feito utilizando o **ANTLR 4**, que já é baixado e gerenciado automaticamente pelo plugin do Maven durante a build).*
 
@@ -72,7 +73,7 @@ Para testar o compilador em lote usando a ferramenta oficial da disciplina, cert
 java -jar compiladores-corretor-automatico-1.0-SNAPSHOT-jar-with-dependencies.jar "java -jar target/trabalho-compiladores-1.0-SNAPSHOT-jar-with-dependencies.jar" gcc temp casos-de-teste "824388" t5
 ```
 
-## Créditos e Agradecimentos
+## Créditos e agradecimentos
 Este projeto foi desenvolvido como parte da disciplina de Construção de Compiladores ministrada pelo Prof. Daniel Lucrédio no Departamento de Computação da UFSCar (DC/UFSCar).
 
 A especificação da linguagem LA (Linguagem Algorítmica), o corretor automático e os materiais base da disciplina podem ser encontrados no repositório oficial do professor: [dlucredio/cursocompiladores](https://github.com/dlucredio/cursocompiladores).
