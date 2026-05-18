@@ -17,6 +17,27 @@ Para compilar e executar este projeto, você precisará ter na sua máquina:
 
 *(O reconhecimento de padrões é feito utilizando o **ANTLR 4**, que já é baixado e gerenciado automaticamente pelo plugin do Maven durante a build).*
 
+## Arquitetura e estrutura do projeto
+
+Este compilador foi desenvolvido seguindo a arquitetura padrão de projetos Maven e implementa as fases clássicas de construção de compiladores.
+
+### Estrutura de diretórios
+* `src/main/antlr4/`: Contém os arquivos de gramática (`.g4`). É aqui que as regras léxicas e sintáticas da linguagem LA são definidas. O plugin do ANTLR lê esses arquivos durante a *build* e gera os analisadores automaticamente.
+* `src/main/java/.../compiladores/`: Contém o código-fonte Java estrutural:
+    * `Main.java`: O ponto de entrada que orquestra todas as fases da compilação e o tratamento de erros.
+    * `LASemantico.java` e `LASemanticoUtils.java`: O *Visitor* responsável por descer a árvore sintática aplicando regras de semântica, controle de escopos e validação de tipagem.
+    * `LAGeradorC.java`: O *Visitor* responsável pela tradução da árvore validada para a linguagem de destino (C).
+    * `TabelaDeSimbolos.java` e `Escopos.java`: Estruturas de dados que armazenam o contexto, propriedades e a visibilidade de variáveis e sub-rotinas.
+* `target/`: Diretório gerado pelo Maven contendo os arquivos compilados e o executável encapsulado (`.jar`).
+
+### Fluxo de dados (pipeline de compilação)
+O processo de tradução de um programa na Linguagem Algorítmica (LA) para C ocorre em etapas estritamente sequenciais:
+
+1. **Análise léxica (`LALexer`)**: Lê o arquivo-fonte caractere por caractere e os agrupa em blocos com significado, gerando um fluxo de **tokens** (ex: palavras reservadas, identificadores, operadores).
+2. **Análise sintática (`LAParser`)**: Recebe o fluxo de tokens e verifica se eles formam instruções válidas segundo a gramática da linguagem, construindo em memória a **Árvore de Sintaxe Abstrata (AST)**.
+3. **Análise semântica (`LASemantico`)**: Percorre a AST verificando a coerência do código (ex: validação de tipos em expressões, verificação de uso de variáveis não declaradas). Alimenta a tabela de símbolos.
+4. **Geração de código (`LAGeradorC`)**: Se o código-fonte não contiver nenhum erro nas fases anteriores, a AST é percorrida uma última vez. Os nós da árvore são traduzidos progressivamente para comandos e blocos estruturais em linguagem **C**.
+
 ## Como compilar
 Para compilar o código-fonte e gerar o executável (arquivo `.jar` encapsulado com as dependências), abra o terminal na raiz do projeto e execute:
 
