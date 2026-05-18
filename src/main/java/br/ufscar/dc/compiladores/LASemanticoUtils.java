@@ -242,4 +242,38 @@ public class LASemanticoUtils {
         }
         return TabelaDeSimbolos.TipoLA.LITERAL; // CADEIA
     }
+
+    public static TabelaDeSimbolos.TipoLA determinarTipo(String tipoTexto) {
+        tipoTexto = tipoTexto.replace("^", "");
+        return switch (tipoTexto) {
+            case "inteiro" -> TabelaDeSimbolos.TipoLA.INTEIRO;
+            case "real" -> TabelaDeSimbolos.TipoLA.REAL;
+            case "literal" -> TabelaDeSimbolos.TipoLA.LITERAL;
+            case "logico" -> TabelaDeSimbolos.TipoLA.LOGICO;
+            default -> TabelaDeSimbolos.TipoLA.INVALIDO;
+        };
+    }
+
+    public static void popularRegistro(TabelaDeSimbolos tabelaRegistro, LAParser.RegistroContext ctx, Escopos escoposAninhados) {
+        for (LAParser.VariavelContext varCtx : ctx.variavel()) {
+            String tipoCampoLA = varCtx.tipo().getText();
+            TabelaDeSimbolos.TipoLA tipoCampo = determinarTipo(tipoCampoLA);
+            String nomeTipoEstendido = null;
+            if (tipoCampo == TabelaDeSimbolos.TipoLA.INVALIDO) {
+                tipoCampo = TabelaDeSimbolos.TipoLA.REGISTRO;
+                nomeTipoEstendido = tipoCampoLA;
+            }
+            for (LAParser.IdentificadorContext identCtx : varCtx.identificador()) {
+                String nomeCampo = identCtx.getText();
+                if (nomeCampo.contains("[")) nomeCampo = nomeCampo.split("\\[")[0];
+                tabelaRegistro.adicionar(nomeCampo, tipoCampo, TabelaDeSimbolos.EstruturaLA.VARIAVEL, nomeTipoEstendido);
+                if (nomeTipoEstendido != null) {
+                    TabelaDeSimbolos.EntradaTabelaDeSimbolos entradaTipo = buscarSimbolo(escoposAninhados, nomeTipoEstendido);
+                    if (entradaTipo != null && entradaTipo.camposRegistro != null) {
+                        tabelaRegistro.verificar(nomeCampo).camposRegistro = entradaTipo.camposRegistro;
+                    }
+                }
+            }
+        }
+    }
 }

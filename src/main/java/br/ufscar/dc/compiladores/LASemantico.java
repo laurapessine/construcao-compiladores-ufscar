@@ -48,46 +48,11 @@ public class LASemantico extends LAParserBaseVisitor<Void> {
         }
         escopoAtual.adicionar(nomeId, tipo, TabelaDeSimbolos.EstruturaLA.VARIAVEL, nomeTipoEstendido);
         if (tipoCtx.registro() != null) {
-            popularRegistro(escopoAtual.verificar(nomeId).camposRegistro, tipoCtx.registro());
+            LASemanticoUtils.popularRegistro(escopoAtual.verificar(nomeId).camposRegistro, tipoCtx.registro(), escoposAninhados);
         } else if (nomeTipoEstendido != null) {
             TabelaDeSimbolos.EntradaTabelaDeSimbolos entradaTipo = LASemanticoUtils.buscarSimbolo(escoposAninhados, nomeTipoEstendido);
             if (entradaTipo != null && entradaTipo.camposRegistro != null) {
                 escopoAtual.verificar(nomeId).camposRegistro = entradaTipo.camposRegistro;
-            }
-        }
-    }
-
-    // Método auxiliar para popular registros
-    private void popularRegistro(TabelaDeSimbolos tabelaRegistro, LAParser.RegistroContext ctx) {
-        for (LAParser.VariavelContext varCtx : ctx.variavel()) {
-            for (LAParser.IdentificadorContext identCtx : varCtx.identificador()) {
-                String nomeCampo = identCtx.getText();
-                // Corta o [ da declaração
-                if (nomeCampo.contains("[")) nomeCampo = nomeCampo.split("\\[")[0];
-                TabelaDeSimbolos.TipoLA tipoCampo = TabelaDeSimbolos.TipoLA.INVALIDO;
-                String nomeTipoEstendido = null;
-                if (varCtx.tipo().tipo_estendido() != null && varCtx.tipo().tipo_estendido().tipo_basico_ident() != null) {
-                    if (varCtx.tipo().tipo_estendido().tipo_basico_ident().tipo_basico() != null) {
-                        String strTipo = varCtx.tipo().tipo_estendido().tipo_basico_ident().tipo_basico().getText();
-                        tipoCampo = switch (strTipo) {
-                            case "inteiro" -> TabelaDeSimbolos.TipoLA.INTEIRO;
-                            case "real" -> TabelaDeSimbolos.TipoLA.REAL;
-                            case "literal" -> TabelaDeSimbolos.TipoLA.LITERAL;
-                            case "logico" -> TabelaDeSimbolos.TipoLA.LOGICO;
-                            default -> TabelaDeSimbolos.TipoLA.INVALIDO;
-                        };
-                    } else {
-                        nomeTipoEstendido = varCtx.tipo().tipo_estendido().tipo_basico_ident().IDENT().getText();
-                        tipoCampo = TabelaDeSimbolos.TipoLA.REGISTRO;
-                    }
-                }
-                tabelaRegistro.adicionar(nomeCampo, tipoCampo, TabelaDeSimbolos.EstruturaLA.VARIAVEL, nomeTipoEstendido);
-                if (nomeTipoEstendido != null) {
-                    TabelaDeSimbolos.EntradaTabelaDeSimbolos entradaTipo = LASemanticoUtils.buscarSimbolo(escoposAninhados, nomeTipoEstendido);
-                    if (entradaTipo != null && entradaTipo.camposRegistro != null) {
-                        tabelaRegistro.verificar(nomeCampo).camposRegistro = entradaTipo.camposRegistro;
-                    }
-                }
             }
         }
     }
@@ -115,7 +80,7 @@ public class LASemantico extends LAParserBaseVisitor<Void> {
             if (escopoAtual.existe(nomeConst)) {
                 LASemanticoUtils.adicionarErroSemantico(ctx.IDENT().getSymbol(), "identificador " + nomeConst + " ja declarado anteriormente");
             } else {
-                TabelaDeSimbolos.TipoLA tipoConst = determinarTipo(ctx.tipo_basico().getText());
+                TabelaDeSimbolos.TipoLA tipoConst = LASemanticoUtils.determinarTipo(ctx.tipo_basico().getText());
                 escopoAtual.adicionar(nomeConst, tipoConst, TabelaDeSimbolos.EstruturaLA.CONSTANTE);
             }
             // O caminho do "tipo" (tipos criados pelo usuário)
@@ -127,7 +92,7 @@ public class LASemantico extends LAParserBaseVisitor<Void> {
                 // Ao criar um tipo (ex: tipo aluno : registro...), insere no escopo atual e já popula os campos
                 escopoAtual.adicionar(nomeTipo, TabelaDeSimbolos.TipoLA.REGISTRO, TabelaDeSimbolos.EstruturaLA.TIPO);
                 if (ctx.tipo().registro() != null) {
-                    popularRegistro(escopoAtual.verificar(nomeTipo).camposRegistro, ctx.tipo().registro());
+                    LASemanticoUtils.popularRegistro(escopoAtual.verificar(nomeTipo).camposRegistro, ctx.tipo().registro(), escoposAninhados);
                 }
             }
         }
@@ -144,7 +109,7 @@ public class LASemantico extends LAParserBaseVisitor<Void> {
             return super.visitDeclaracao_global(ctx);
         }
         TabelaDeSimbolos.EstruturaLA estrutura = ctx.FUNCAO() != null ? TabelaDeSimbolos.EstruturaLA.FUNCAO : TabelaDeSimbolos.EstruturaLA.PROCEDIMENTO;
-        TabelaDeSimbolos.TipoLA tipoRetorno = ctx.tipo_estendido() != null ? determinarTipo(ctx.tipo_estendido().getText()) : TabelaDeSimbolos.TipoLA.INVALIDO;
+        TabelaDeSimbolos.TipoLA tipoRetorno = ctx.tipo_estendido() != null ? LASemanticoUtils.determinarTipo(ctx.tipo_estendido().getText()) : TabelaDeSimbolos.TipoLA.INVALIDO;
         TabelaDeSimbolos.EntradaTabelaDeSimbolos entrada = new TabelaDeSimbolos.EntradaTabelaDeSimbolos(nome, tipoRetorno, estrutura);
         escopoAtual.adicionar(entrada);
         // Abre um novo escopo DENTRO da função
@@ -158,7 +123,7 @@ public class LASemantico extends LAParserBaseVisitor<Void> {
                     // Limpa qualquer sujeira da gramática e colchetes
                     nomeParam = nomeParam.replace("var", "").replace(":", "").trim();
                     if (nomeParam.contains("[")) nomeParam = nomeParam.split("\\[")[0];
-                    TabelaDeSimbolos.TipoLA tipoParam = determinarTipo(paramCtx.tipo_estendido().getText());
+                    TabelaDeSimbolos.TipoLA tipoParam = LASemanticoUtils.determinarTipo(paramCtx.tipo_estendido().getText());
                     // Acerta o tipo para REGISTRO primeiro
                     String nomeTipoEstendido = null;
                     if (tipoParam == TabelaDeSimbolos.TipoLA.INVALIDO || tipoParam == TabelaDeSimbolos.TipoLA.REGISTRO) {
@@ -252,19 +217,6 @@ public class LASemantico extends LAParserBaseVisitor<Void> {
             }
         }
         return super.visitParcela_unario(ctx);
-    }
-
-    // Converte a string do código-fonte para o Enum interno
-    private TabelaDeSimbolos.TipoLA determinarTipo(String tipoTexto) {
-        // Remove marcadores de ponteiro se existirem para pegar o tipo base
-        tipoTexto = tipoTexto.replace("^", "");
-        return switch (tipoTexto) {
-            case "inteiro" -> TabelaDeSimbolos.TipoLA.INTEIRO;
-            case "real" -> TabelaDeSimbolos.TipoLA.REAL;
-            case "literal" -> TabelaDeSimbolos.TipoLA.LITERAL;
-            case "logico" -> TabelaDeSimbolos.TipoLA.LOGICO;
-            default -> TabelaDeSimbolos.TipoLA.INVALIDO; // Para tipos customizados ou registros
-        };
     }
 
     @Override

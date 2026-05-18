@@ -99,7 +99,7 @@ public class LAGeradorC extends LAParserBaseVisitor<Void> {
                     if (i < ctx.variavel().identificador().size() - 1) saida.append(", ");
                     // Adiciona o registro e popula os campos para o gerador lembrar
                     escopoAtual.adicionar(nomeVar, TabelaDeSimbolos.TipoLA.REGISTRO, TabelaDeSimbolos.EstruturaLA.VARIAVEL);
-                    popularRegistro(escopoAtual.verificar(nomeVar).camposRegistro, ctx.variavel().tipo().registro());
+                    LASemanticoUtils.popularRegistro(escopoAtual.verificar(nomeVar).camposRegistro, ctx.variavel().tipo().registro(), escoposAninhados);
                 }
                 saida.append(";\n");
             } else {
@@ -122,7 +122,7 @@ public class LAGeradorC extends LAParserBaseVisitor<Void> {
             String nome = ctx.IDENT().getText();
             String valor = getExpressaoC(ctx.valor_constante());
             saida.append("    const ").append(tipoC).append(" ").append(nome).append(" = ").append(valor).append(";\n");
-            escopoAtual.adicionar(nome, determinarTipo(ctx.tipo_basico().getText()), TabelaDeSimbolos.EstruturaLA.CONSTANTE);
+            escopoAtual.adicionar(nome, LASemanticoUtils.determinarTipo(ctx.tipo_basico().getText()), TabelaDeSimbolos.EstruturaLA.CONSTANTE);
         } else if (ctx.TIPO() != null) {
             // Definição de tipo struct
             String nomeTipo = ctx.IDENT().getText();
@@ -143,33 +143,10 @@ public class LAGeradorC extends LAParserBaseVisitor<Void> {
                 saida.append("} ").append(nomeTipo).append(";\n");
                 // Grava o "molde" da struct na tabela
                 escopoAtual.adicionar(nomeTipo, TabelaDeSimbolos.TipoLA.REGISTRO, TabelaDeSimbolos.EstruturaLA.TIPO);
-                popularRegistro(escopoAtual.verificar(nomeTipo).camposRegistro, ctx.tipo().registro());
+                LASemanticoUtils.popularRegistro(escopoAtual.verificar(nomeTipo).camposRegistro, ctx.tipo().registro(), escoposAninhados);
             }
         }
         return null;
-    }
-
-    // --- MÉTODOS AUXILIARES PARA POPULAR REGISTRO ---
-    private void popularRegistro(TabelaDeSimbolos tabelaRegistro, LAParser.RegistroContext ctx) {
-        for (LAParser.VariavelContext varCtx : ctx.variavel()) {
-            String tipoCampoLA = varCtx.tipo().getText();
-            TabelaDeSimbolos.TipoLA tipoCampo = determinarTipo(tipoCampoLA);
-            String nomeTipoEstendido = null;
-            if (tipoCampo == TabelaDeSimbolos.TipoLA.INVALIDO) {
-                tipoCampo = TabelaDeSimbolos.TipoLA.REGISTRO;
-                nomeTipoEstendido = tipoCampoLA;
-            }
-            for (LAParser.IdentificadorContext identCtx : varCtx.identificador()) {
-                String nomeCampo = identCtx.getText();
-                tabelaRegistro.adicionar(nomeCampo, tipoCampo, TabelaDeSimbolos.EstruturaLA.VARIAVEL, nomeTipoEstendido);
-                if (nomeTipoEstendido != null) {
-                    TabelaDeSimbolos.EntradaTabelaDeSimbolos entradaTipo = LASemanticoUtils.buscarSimbolo(escoposAninhados, nomeTipoEstendido);
-                    if (entradaTipo != null && entradaTipo.camposRegistro != null) {
-                        tabelaRegistro.verificar(nomeCampo).camposRegistro = entradaTipo.camposRegistro;
-                    }
-                }
-            }
-        }
     }
 
     // --- 3. COMANDOS BÁSICOS (LEIA, ESCREVA, ATRIBUIÇÃO, RETORNO) ---
@@ -367,20 +344,9 @@ public class LAGeradorC extends LAParserBaseVisitor<Void> {
         return tipoC;
     }
 
-    private TabelaDeSimbolos.TipoLA determinarTipo(String tipoTexto) {
-        tipoTexto = tipoTexto.replace("^", "");
-        return switch (tipoTexto) {
-            case "inteiro" -> TabelaDeSimbolos.TipoLA.INTEIRO;
-            case "real" -> TabelaDeSimbolos.TipoLA.REAL;
-            case "literal" -> TabelaDeSimbolos.TipoLA.LITERAL;
-            case "logico" -> TabelaDeSimbolos.TipoLA.LOGICO;
-            default -> TabelaDeSimbolos.TipoLA.INVALIDO;
-        };
-    }
-
     // Método auxiliar para evitar código duplicado ao registrar variáveis
     private void registrarVariavelNaTabela(TabelaDeSimbolos escopo, String nome, String tipoLA) {
-        TabelaDeSimbolos.TipoLA tipoAux = determinarTipo(tipoLA);
+        TabelaDeSimbolos.TipoLA tipoAux = LASemanticoUtils.determinarTipo(tipoLA);
         if (tipoAux == TabelaDeSimbolos.TipoLA.INVALIDO) {
             TabelaDeSimbolos.EntradaTabelaDeSimbolos entradaTipo = LASemanticoUtils.buscarSimbolo(escoposAninhados, tipoLA);
             if (entradaTipo != null) {
